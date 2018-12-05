@@ -197,8 +197,11 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
     if (rowsize > 0) {
       if (src->dim() <= 1) {
         #pragma omp parallel for if(numel > TH_OMP_OVERHEAD_THRESHOLD) private(i)
-        for (i=0; i<numel; i++)
+        for (i=0; i<numel; i++) {
+          printf("i %ld src_data %x index_data[i] %ld rowsize %ld\n", i, src_data, index_data[i], rowsize);
+          while (true);
           tensor_data[i] = src_data[index_data[i] - TH_INDEX_BASE];
+          }
       } else {
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++)
