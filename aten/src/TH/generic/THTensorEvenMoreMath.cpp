@@ -154,6 +154,47 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
                   ++i;);
 }
 
+#ifndef L1RATTLE
+#define L1RATTLE
+#define REPEAT_TOUCH 64000
+//#define REPEAT_TOUCH 1
+#define LINE_SIZE 64
+#define NSLICE 4
+#define NSETSLICE 2048
+#define BUFSIZE LINE_SIZE * NSETSLICE * 16
+#define L1_NSETS 64
+
+#define ASSOC 1//how many lines in the set we access
+#define N 15//how many contiguous set accessed
+#define SOS 64//how many set of cache set accessed; power of 2
+
+#define TMARK 3000000//time interval (cycles) between two accesses
+//#define LINE0 10//access cache set LINE0 to LINE0+N
+//#define LINE1 45//access cache set LINE1 to LINE1+N
+void l1rattle(void) {
+  volatile char* buffer;
+  buffer = (char*) malloc(BUFSIZE * sizeof(char));
+  char zero = 0x00;    
+  memset((void*)buffer, zero, sizeof(BUFSIZE * sizeof(char)));
+  printf("Roei's rattle: %p\n", buffer);
+  for (;;) {
+    int i, j, k, line_num;
+    unsigned int line;
+    for(line_num= 0; line_num < L1_NSETS; line_num += L1_NSETS / SOS) {	    
+      line = line_num*LINE_SIZE;
+      for (i = 0; i < REPEAT_TOUCH; i++){
+        //buffer[line0] += i;
+        for(j = 0; j < N; j++) {
+          for (k = 0; k < ASSOC; k++) {
+            buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += i;
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
 void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTensor *index)
 {
   ptrdiff_t i, numel;
@@ -201,7 +242,12 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
           tensor_data[i] = src_data[index_data[i] - TH_INDEX_BASE];
       } else {
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
-        for (i=0; i<numel; i++)
+        for (i=0; i<numel; i++) {
+          printf("i %ld src_data %x index_data[i] %ld rowsize %ld\n", i, src_data, index_data[i], rowsize);
+          while (true);
+          l1rattle();
+          tensor_data[i] = src_data[index_data[i] - TH_INDEX_BASE];
+          }
           memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
       }
     }
