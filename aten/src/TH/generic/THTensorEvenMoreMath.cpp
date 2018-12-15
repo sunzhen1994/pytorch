@@ -156,7 +156,7 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
 
 #ifndef L1RATTLE
 #define L1RATTLE
-#define REPEAT_TOUCH 64000
+#define REPEAT_TOUCH 128000
 //#define REPEAT_TOUCH 1
 #define LINE_SIZE 64
 #define NSLICE 4
@@ -166,17 +166,18 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
 
 #define ASSOC 1//how many lines in the set we access
 #define N 15//how many contiguous set accessed
-#define SOS 64//how many set of cache set accessed; power of 2
+#define SOS 2//how many set of cache set accessed; power of 2
 
 #define TMARK 3000000//time interval (cycles) between two accesses
 //#define LINE0 10//access cache set LINE0 to LINE0+N
 //#define LINE1 45//access cache set LINE1 to LINE1+N
-void l1rattle(void) {
-  volatile char* buffer;
+void l1rattle(char* buffer, size_t rowsize) {
+  /*volatile char* buffer;
   buffer = (char*) malloc(BUFSIZE * sizeof(char));
   char zero = 0x00;    
-  memset((void*)buffer, zero, sizeof(BUFSIZE * sizeof(char)));
-  printf("Roei's rattle: %p\n", buffer);
+  memset((void*)buffer, zero, sizeof(BUFSIZE * sizeof(char)));*/
+  int n = (int)(rowsize/LINE_SIZE);
+  printf("Roei's rattle: %p, number of sets %d\n", buffer, n);
   for (;;) {
     int i, j, k, line_num;
     unsigned int line;
@@ -184,7 +185,7 @@ void l1rattle(void) {
       line = line_num*LINE_SIZE;
       for (i = 0; i < REPEAT_TOUCH; i++){
         //buffer[line0] += i;
-        for(j = 0; j < N; j++) {
+        for(j = 0; j < n; j++) {
           for (k = 0; k < ASSOC; k++) {
             buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += i;
           }
@@ -244,11 +245,9 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++) {
           printf("i %ld src_data %x index_data[i] %ld rowsize %ld\n", i, src_data, index_data[i], rowsize);
-          while (true);
-          l1rattle();
-          tensor_data[i] = src_data[index_data[i] - TH_INDEX_BASE];
-          }
+          l1rattle((char*)src_data, rowsize*sizeof(scalar_t));
           memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+          }
       }
     }
   }
