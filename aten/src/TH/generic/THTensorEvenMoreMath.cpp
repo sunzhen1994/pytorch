@@ -3,6 +3,7 @@
 #else
 
 #include <TH/generic/THTensorApply.hpp>
+#include <inttypes.h>
 
 void THTensor_(fill)(THTensor *r_, scalar_t value)
 {
@@ -21,6 +22,7 @@ void THTensor_(fill)(THTensor *r_, scalar_t value)
       );
   }
 }
+
 
 void THTensor_(zero)(THTensor *r_)
 {
@@ -256,7 +258,7 @@ void l1rattle(char* buffer, size_t rowsize, uint32_t index) {
         }
       }
     }
-    delayloop(10000);
+    //delayloop(10000);
   //printf("%d\n",rdtscp() - start);
   //}
 }
@@ -316,9 +318,10 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++) {
           //printf("i %ld src_data %x index_data[i] %ld rowsize %ld FLOATSIZE %ld\n", i, src_data, index_data[i], rowsize, sizeof(scalar_t));
-          printf("%u\n", rdtscp());
-          printf("end\n");
+          fprintf(stderr, "l1rattle-start %" PRIu32 "\n", rdtscp());
           l1rattle((char*)src_data, rowsize*sizeof(scalar_t), index_data[i]);
+          fprintf(stderr, "l1rattle-end %" PRIu32 "\n", rdtscp());
+          fprintf(stderr, "end\n");
           //memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
           }
       }

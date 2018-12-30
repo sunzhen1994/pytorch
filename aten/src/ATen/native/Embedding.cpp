@@ -5,6 +5,7 @@
 #include <cstring>
 #include <memory>
 #include <sstream>
+#include <inttypes.h>
 #include <vector>
 
 #ifdef _OPENMP
@@ -19,9 +20,14 @@ static inline uint32_t rdtscp() {
   asm volatile ("rdtscp": "=a" (rv) :: "edx", "ecx");
   return rv;
 }
+static inline uint64_t rdtscp64() {
+  uint32_t low, high;
+  asm volatile ("rdtscp": "=a" (low), "=d" (high) :: "ecx");
+  return (((uint64_t)high) << 32) | low;
+}
 Tensor embedding(const Tensor & weight, const Tensor & indices,
                  int64_t padding_idx, bool scale_grad_by_freq, bool sparse) {
-    printf("%u\n", rdtscp());
+  fprintf(stderr, "embedding %" PRIu32 "\n", rdtscp());
   auto indices_arg = TensorArg(indices, "indices", 1);
   checkScalarType("embedding", indices_arg, kLong);
 
