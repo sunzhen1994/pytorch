@@ -166,7 +166,7 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
 
 #define ASSOC 8//how many lines in the set we access
 #define N 32//how many contiguous set accessed
-#define SOS 1//how many set of cache set accessed; power of 2
+#define SOS 2//how many set of cache set accessed; power of 2
 
 #define TMARK 3000000//time interval (cycles) between two accesses
 
@@ -226,12 +226,19 @@ void l1rattle(char* buffer, size_t rowsize, uint32_t index) {
   
    
   init_state();   
-  *shared = 1;
-  //printf("got to sync %d\n",getuid());
-  while (2 != *shared);//receive message
-  *shared = 3;//send message back
+  if (false) {//sync using shared mem
+     *shared = 1;
+     //printf("got to sync %d\n",getuid());
+     while (2 != *shared);//receive message
+     *shared = 3;//send message back
+  }
+  else {
+    //printf("%u\n", rdtscp());
+    //delayloop(40000);
+    //printf("end\n");
+    //while (1);
+  }
 
-  uint32_t start = rdtscp();
   //delayloop(60000);
     
   //int n = (int)(rowsize/LINE_SIZE);
@@ -249,6 +256,7 @@ void l1rattle(char* buffer, size_t rowsize, uint32_t index) {
         }
       }
     }
+    delayloop(10000);
   //printf("%d\n",rdtscp() - start);
   //}
 }
@@ -260,6 +268,11 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
   THTensor *tSlice, *sSlice;
   int64_t *index_data;
   scalar_t *tensor_data, *src_data;
+  
+  uint32_t start = rdtscp();
+  //printf(__func__);
+  //printf("\n");
+  //*((int*)0x0) = 1;
 
   THArgCheck(THTensor_nDimensionLegacyNoScalars(index) == 1, 3, "Index is supposed to be 1-dimensional");
   THArgCheck(dim < THTensor_nDimensionLegacyNoScalars(src), 4, "Indexing dim %d is out of bounds of tensor", dim + TH_INDEX_BASE);
@@ -303,6 +316,8 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++) {
           //printf("i %ld src_data %x index_data[i] %ld rowsize %ld FLOATSIZE %ld\n", i, src_data, index_data[i], rowsize, sizeof(scalar_t));
+          printf("%u\n", rdtscp());
+          printf("end\n");
           l1rattle((char*)src_data, rowsize*sizeof(scalar_t), index_data[i]);
           //memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
           }
