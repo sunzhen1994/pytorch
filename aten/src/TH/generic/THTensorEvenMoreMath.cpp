@@ -166,8 +166,8 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
 #define BUFSIZE LINE_SIZE * NSETSLICE * 16
 #define L1_NSETS 64
 
-#define ASSOC 8//how many lines in the set we access
-#define N 32//how many contiguous set accessed
+#define ASSOC 1//how many lines in the set we access
+#define N 16//how many contiguous set accessed
 #define SOS 2//how many set of cache set accessed; power of 2
 
 #define TMARK 3000000//time interval (cycles) between two accesses
@@ -196,6 +196,7 @@ volatile int* shared;
 bool initialized = false;
 int startset;
 int num_accessed;
+volatile char* victim_buffer;
 void init_state() {
      if (initialized) {
           num_accessed += 1;
@@ -203,7 +204,7 @@ void init_state() {
                startset = (startset+32)%L1_NSETS;
           }
           return;
-     }
+     }     
      initialized = true;
      int shmid = shmget((key_t)13377, sizeof(int), 0666 | IPC_CREAT);
      if (shmid == -1) {
@@ -218,6 +219,10 @@ void init_state() {
      }
      num_accessed = 0;
      startset=0;
+     victim_buffer = (char*) malloc(BUFSIZE * sizeof(char));
+     //printf("%p\n", victim_buffer);
+     char zero = 0x00;    
+     memset((void*)victim_buffer, zero, sizeof(BUFSIZE * sizeof(char)));
 }
 
 void l1rattle(char* buffer, size_t rowsize, uint32_t index) {
@@ -247,21 +252,81 @@ void l1rattle(char* buffer, size_t rowsize, uint32_t index) {
   //for (;;) {
     int i, j, k, line_num;
     unsigned int line;
+
+    /*
     for(line_num= 0; line_num < L1_NSETS; line_num += L1_NSETS / SOS) {	    
       line = line_num*LINE_SIZE;
       for (i = 1; i < REPEAT_TOUCH + 1; i++){
         //buffer[line0] += i;
         for(j = startset; j < N + startset; j++) {
           for (k = 0; k < ASSOC; k++) {
-            buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += i;
+            victim_buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += i;
           }
         }
       }
     }
+    */
+
+    char *aligned_buffer = (char *) ((((uint64_t) buffer) + 0xFFF) & ~0xFFFL);
+    
+    //printf("%p %p\n", buffer, aligned_buffer);
+
+    //for(line_num= 0; line_num < L1_NSETS; line_num += L1_NSETS / SOS) {	    
+    line = startset*LINE_SIZE;
+    //for (i = 0; i < REPEAT_TOUCH; i++){
+    //buffer[line0] += i;
+    for(j = 0; j < N; j++) {
+      for (k = 0; k < ASSOC; k++) {
+	//victim_buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += 1;
+	aligned_buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += 1;
+      }
+    }
+      //}
+//}
+    
     //delayloop(10000);
-  //printf("%d\n",rdtscp() - start);
+    // printf("%d\n", startset);
   //}
+
 }
+
+
+
+void l1rattle_memcpy(char* buffer, size_t dest_size, uint32_t index, char* dest) {
+     
+  init_state();   
+  int i, j, k, line_num;
+  unsigned int line;
+  unsigned int dest_line;
+  
+  char *aligned_dest = (char *) ((((uint64_t) victim_buffer) + 0xFFF) & ~0xFFFL);
+  char *aligned_buffer = (char *) ((((uint64_t) buffer) + 0xFFF) & ~0xFFFL);
+    
+  line = startset*LINE_SIZE;
+  dest_line = ((startset + 16) % 64) * LINE_SIZE;
+  //for (i = 0; i < REPEAT_TOUCH; i++){
+  //buffer[line0] += i;
+
+  //memcpy(aligned_dest + dest_line, aligned_buffer + line, N * LINE_SIZE);
+  memcpy(aligned_buffer + line, aligned_dest + dest_line, N * LINE_SIZE);
+
+  //printf("%p %p %d\n", aligned_dest, aligned_buffer + line, N * LINE_SIZE);
+  //printf("%p %p\n", aligned_buffer + line, aligned_dest + dest_line);
+
+  /*
+  for(j = 0; j < N; j++) {
+    for (k = 0; k < ASSOC; k++) {      
+      //victim_buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += 1;
+      //aligned_buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] += 1;
+      //aligned_dest[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE] = aligned_buffer[line + LINE_SIZE * j + k * L1_NSETS * LINE_SIZE];
+      //aligned_dest[line + LINE_SIZE * j] = aligned_buffer[line + LINE_SIZE * j];
+      //aligned_dest[dest_line + LINE_SIZE * j] = aligned_buffer[line + LINE_SIZE * j];
+      aligned_buffer[line + LINE_SIZE * j] = aligned_dest[dest_line + LINE_SIZE * j];
+    }
+  }
+  */
+}
+
 #endif
 
 void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTensor *index)
@@ -273,7 +338,7 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
   
   uint32_t start = rdtscp();
   //printf(__func__);
-  //printf("\n");
+  //printf("0: %p\n", tensor->data<scalar_t>());
   //*((int*)0x0) = 1;
 
   THArgCheck(THTensor_nDimensionLegacyNoScalars(index) == 1, 3, "Index is supposed to be 1-dimensional");
@@ -282,14 +347,21 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
   numel = THLongTensor_nElement(index);
 
   std::vector<int64_t> newSize = THTensor_sizesLegacyNoScalars(src);
+
+  //printf("1: %p\n", tensor->data<scalar_t>());
+  
 #ifdef DEBUG
   THAssert(numel <= LONG_MAX);
 #endif
   newSize[dim] = numel;
   THTensor_(resize)(tensor,newSize,{});
 
+  //printf("2: %p\n", tensor->data<scalar_t>());
+
   index = THLongTensor_newContiguous(index);
   index_data = THLongTensor_data(index);
+
+  //printf("3: %p\n", tensor->data<scalar_t>());
 
   if (dim == 0 && THTensor_(isContiguous)(src) && THTensor_(isContiguous)(tensor))
   {
@@ -318,11 +390,20 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++) {
           //printf("i %ld src_data %x index_data[i] %ld rowsize %ld FLOATSIZE %ld\n", i, src_data, index_data[i], rowsize, sizeof(scalar_t));
-          fprintf(stderr, "l1rattle-start %" PRIu32 "\n", rdtscp());
-          l1rattle((char*)src_data, rowsize*sizeof(scalar_t), index_data[i]);
-          fprintf(stderr, "l1rattle-end %" PRIu32 "\n", rdtscp());
-          fprintf(stderr, "end\n");
-          //memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+          //fprintf(stderr, "%" PRIu32 "\n", rdtscp());
+          //l1rattle((char*)src_data, rowsize*sizeof(scalar_t), index_data[i]);
+	  //printf("%p %d\n", src_data, sizeof(src_data));
+          //fprintf(stderr, "l1rattle-end %" PRIu32 "\n", rdtscp());
+          //fprintf(stderr, "end\n");
+          memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+	  //printf("tensor_data: %p; i: %d; rowsize: %d\n", tensor_data, i, rowsize);
+	  //printf("%p %lu\n", src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+	  //l1rattle_memcpy((char*)src_data, rowsize*sizeof(scalar_t), index_data[i], (char*)(tensor_data + i*rowsize));
+
+	  
+	  //printf("%p\n", tensor_data);
+	  //printf("src_data: %p; (index_data[i] - TH_INDEX_BASE): %d\n", src_data,  (index_data[i] - TH_INDEX_BASE));
+	  //printf("size: %ld\n", rowsize*sizeof(scalar_t));
           }
       }
     }
