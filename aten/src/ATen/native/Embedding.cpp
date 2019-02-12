@@ -5,6 +5,7 @@
 #include <cstring>
 #include <memory>
 #include <sstream>
+#include <inttypes.h>
 #include <vector>
 
 #ifdef _OPENMP
@@ -14,14 +15,28 @@
 
 namespace at { namespace native {
 
+static inline uint32_t rdtscp() {
+  uint32_t rv;
+  asm volatile ("rdtscp": "=a" (rv) :: "edx", "ecx");
+  return rv;
+}
+static inline uint64_t rdtscp64() {
+  uint32_t low, high;
+  asm volatile ("rdtscp": "=a" (low), "=d" (high) :: "ecx");
+  return (((uint64_t)high) << 32) | low;
+}
 Tensor embedding(const Tensor & weight, const Tensor & indices,
                  int64_t padding_idx, bool scale_grad_by_freq, bool sparse) {
+  //fprintf(stderr, "embedding %" PRIu32 "\n", rdtscp());
+  uint32_t embedding_start = rdtscp();
   auto indices_arg = TensorArg(indices, "indices", 1);
   checkScalarType("embedding", indices_arg, kLong);
 
   // TODO: use tensor.index() after improving perf
   if (indices.dim() == 1) {
-    return weight.index_select(0, indices);
+    auto ret = weight.index_select(0, indices);
+    //fprintf(stderr, "%" PRIu32 "\n", embedding_start);
+    return ret;
   }
 
   auto size = indices.sizes().vec();
