@@ -592,6 +592,7 @@ class build_ext(build_ext_parent):
             ninja_builder.run()
         else:
             generate_code(None)
+            pass
 
         # It's an old-style class in Python 2.7...
         setuptools.command.build_ext.build_ext.run(self)

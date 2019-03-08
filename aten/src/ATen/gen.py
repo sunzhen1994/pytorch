@@ -420,6 +420,12 @@ def generate_outputs():
     }
 
     for core_file, core_template_file in core_files.items():
+        if False and core_file == "Tensor.h":
+             print(core_template_file)
+             print(type(top_env))
+             import sys
+             print(" ".join(sys.argv))
+             import pdb; pdb.set_trace()
         core_file_manager.write(core_file, core_template_file, top_env)
 
     file_manager.write('TypeExtendedInterface.h', TYPE_EXTENDED_INTERFACE_H, top_env)

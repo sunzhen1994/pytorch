@@ -104,7 +104,7 @@ add_custom_command(
   "${TOOLS_PATH}/autograd/templates/python_functions.cpp"
   "${TOOLS_PATH}/autograd/templates/python_variable_methods.cpp"
   "${TOOLS_PATH}/autograd/templates/python_variable_methods_dispatch.h"
-  "${TOOLS_PATH}/autograd/templates/python_torch_functions.cpp"
+  #"${TOOLS_PATH}/autograd/templates/python_torch_functions.cpp"
   "${TOOLS_PATH}/autograd/templates/python_torch_functions_dispatch.h"
   "${TOOLS_PATH}/autograd/templates/python_nn_functions.cpp"
   "${TOOLS_PATH}/autograd/templates/python_nn_functions.h"
