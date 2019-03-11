@@ -697,8 +697,14 @@ if (BUILD_PYTHON)
   endif()
 
   add_library(torch_python SHARED ${TORCH_PYTHON_SRCS})
+  add_library(roeistimer SHARED "/home/roei/ML_side_channel/pytorch/timing/roeistimer.c")
 
   target_link_libraries(torch_python ${TORCH_PYTHON_LINK_LIBRARIES})
+  #target_link_libraries(torch_python "-L../../lib")
+  target_link_libraries(torch_python "roeistimer")
+  #list(APPEND TORCH_PYTHON_LINK_LIBRARIES roeistimer)
+  message(WARNING "BAH")
+  message(WARNING "${TORCH_PYTHON_LINK_LIBRARIES}")
 
   target_compile_definitions(torch_python PRIVATE ${TORCH_PYTHON_COMPILE_DEFINITIONS})
 
@@ -710,6 +716,10 @@ if (BUILD_PYTHON)
     set_target_properties(torch_python PROPERTIES LINK_FLAGS "${TORCH_PYTHON_LINK_FLAGS}")
   endif()
 
+  install(TARGETS roeistimer
+    RUNTIME DESTINATION "${TORCH_INSTALL_BIN_DIR}"
+    LIBRARY DESTINATION "${TORCH_INSTALL_LIB_DIR}"
+    ARCHIVE DESTINATION "${TORCH_INSTALL_LIB_DIR}")
   install(TARGETS torch_python
     RUNTIME DESTINATION "${TORCH_INSTALL_BIN_DIR}"
     LIBRARY DESTINATION "${TORCH_INSTALL_LIB_DIR}"
