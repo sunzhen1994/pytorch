@@ -221,6 +221,7 @@ if(NOT BUILD_ATEN_ONLY)
   endif()
 endif()
 
+target_link_libraries(caffe2 PUBLIC roeistimer)
 target_link_libraries(caffe2 PUBLIC c10)
 target_link_libraries(caffe2 PUBLIC ${Caffe2_PUBLIC_DEPENDENCY_LIBS})
 target_link_libraries(caffe2 PRIVATE ${Caffe2_DEPENDENCY_LIBS})

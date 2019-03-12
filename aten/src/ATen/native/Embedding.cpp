@@ -14,8 +14,10 @@
 
 namespace at { namespace native {
 
+#include "roeistimer.h"
 Tensor embedding(const Tensor & weight, const Tensor & indices,
                  int64_t padding_idx, bool scale_grad_by_freq, bool sparse) {
+  roeis_collect_time("at::native::embedding");
   auto indices_arg = TensorArg(indices, "indices", 1);
   checkScalarType("embedding", indices_arg, kLong);
 

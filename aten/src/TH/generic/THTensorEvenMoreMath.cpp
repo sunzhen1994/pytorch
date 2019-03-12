@@ -154,12 +154,14 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
                   ++i;);
 }
 
+#include "roeistimer.h"
 void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTensor *index)
 {
   ptrdiff_t i, numel;
   THTensor *tSlice, *sSlice;
   int64_t *index_data;
   scalar_t *tensor_data, *src_data;
+  roeis_collect_time(__func__);
 
   THArgCheck(THTensor_nDimensionLegacyNoScalars(index) == 1, 3, "Index is supposed to be 1-dimensional");
   THArgCheck(dim < THTensor_nDimensionLegacyNoScalars(src), 4, "Indexing dim %d is out of bounds of tensor", dim + TH_INDEX_BASE);
@@ -200,9 +202,11 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
         for (i=0; i<numel; i++)
           tensor_data[i] = src_data[index_data[i] - TH_INDEX_BASE];
       } else {
+        roeis_collect_time("access");
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
-        for (i=0; i<numel; i++)
+        for (i=0; i<numel; i++) { 
           memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+        }
       }
     }
   }
@@ -225,6 +229,7 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
     }
   }
 
+  roeis_collect_time("post-access");
   THLongTensor_free(index);
 }
 

@@ -327,6 +327,7 @@ if (MSVC)
 endif()
 
 target_link_libraries(torch caffe2_library)
+target_link_libraries(torch roeistimer)
 
 find_package(OpenMP)
 if(OPENMP_FOUND)
@@ -720,6 +721,7 @@ if (BUILD_PYTHON)
     RUNTIME DESTINATION "${TORCH_INSTALL_BIN_DIR}"
     LIBRARY DESTINATION "${TORCH_INSTALL_LIB_DIR}"
     ARCHIVE DESTINATION "${TORCH_INSTALL_LIB_DIR}")
+  install(TARGETS roeistimer EXPORT Caffe2Targets DESTINATION lib)
   install(TARGETS torch_python
     RUNTIME DESTINATION "${TORCH_INSTALL_BIN_DIR}"
     LIBRARY DESTINATION "${TORCH_INSTALL_LIB_DIR}"
