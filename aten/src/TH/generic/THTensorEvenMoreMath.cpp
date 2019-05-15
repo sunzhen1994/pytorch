@@ -4,6 +4,7 @@
 
 #include <TH/generic/THTensorApply.hpp>
 
+
 void THTensor_(fill)(THTensor *r_, scalar_t value)
 {
   if (THTensor_(isContiguous)(r_) || THTensor_(isTransposed)(r_)) {
@@ -154,6 +155,24 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
                   ++i;);
 }
 
+#ifndef L1RATTLE
+#define L1RATTLE
+#define BUFSIZE 4096 * 2
+volatile char* dest_buffer;
+char *aligned_buffer;
+
+int buf_init = 0;
+
+volatile void buffer_init() {
+  if(!buf_init) {    
+    dest_buffer = (char *) malloc(BUFSIZE);
+    aligned_buffer = (char *) ((((uint64_t) dest_buffer) + 0xFFF) & ~0xFFFL);
+    buf_init = 1;
+  }
+}
+
+#endif
+
 void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTensor *index)
 {
   ptrdiff_t i, numel;
@@ -201,8 +220,17 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
           tensor_data[i] = src_data[index_data[i] - TH_INDEX_BASE];
       } else {
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
-        for (i=0; i<numel; i++)
-          memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+        for (i=0; i<numel; i++) {
+          //memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+	  //memcpy(src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+	  buffer_init();	  
+	  memcpy(aligned_buffer, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+	  //fprintf(stderr, "%p\n", tensor_data + i*rowsize);
+	  //printf("array_start: %p\n", src_data);
+	  //printf("%lu %lu %lu\n", index_data[i], TH_INDEX_BASE, rowsize);
+	  //printf("word: %p\n", src_data + (index_data[i] - TH_INDEX_BASE)*rowsize);
+	  //printf("%d %d\n", rowsize, sizeof(scalar_t));
+	}
       }
     }
   }
