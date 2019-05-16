@@ -698,7 +698,7 @@ if (BUILD_PYTHON)
   endif()
 
   add_library(torch_python SHARED ${TORCH_PYTHON_SRCS})
-  add_library(roeistimer SHARED "/home/roei/ML_side_channel/pytorch/timing/roeistimer.c")
+  add_library(roeistimer SHARED "/home/zhen/test/pytorch/timing/roeistimer.c")
 
   target_link_libraries(torch_python ${TORCH_PYTHON_LINK_LIBRARIES})
   #target_link_libraries(torch_python "-L../../lib")
