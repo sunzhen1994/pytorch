@@ -28,6 +28,7 @@ inline void roeis_collect_time(const char* func_name) {
         //printf("collect %d\n",roeis_funcs_len);
 	roeis_times[roeis_funcs_len] = rdtscp64();
         //printf("collect2 %d\n",roeis_funcs_len);
+	printf("hello_time: %s\n", func_name);
 	roeis_func_names[roeis_funcs_len] = func_name;
 	roeis_funcs_len++;
 }
@@ -42,7 +43,7 @@ inline void roeis_report_time() {
                 if (diff < 0) {//underflow
 			diff = prev_time - roeis_times[i];
 		}
-		printf("%s --> %s %lu\n",roeis_func_names[i-1], roeis_func_names[i], diff);
+		//printf("%s --> %s %lu\n",roeis_func_names[i-1], roeis_func_names[i], diff);
 		prev_time = roeis_times[i];
 	}
 }
