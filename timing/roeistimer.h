@@ -1,6 +1,8 @@
 #ifndef __TIMER_H__
 #define __TIMER_H__
 
+#define SAMPLES 202
+
 extern "C" const char* roeis_func_names[];
 extern "C" uint64_t roeis_times[];
 extern "C" uint32_t roeis_funcs_len;
@@ -28,13 +30,22 @@ inline void roeis_collect_time(const char* func_name) {
         //printf("collect %d\n",roeis_funcs_len);
 	roeis_times[roeis_funcs_len] = rdtscp64();
         //printf("collect2 %d\n",roeis_funcs_len);
-	printf("%d: hello_time: %s\n", roeis_funcs_len, func_name);
+	//printf("%d: hello_time: %s\n", roeis_funcs_len, func_name);
 	roeis_func_names[roeis_funcs_len] = func_name;
 	roeis_funcs_len++;
 }
 
+inline void print_all_time() {
+  if (roeis_funcs_len == 0) {
+    return;
+  }
+  for(int i = 0; i < SAMPLES; i++) {
+    fprintf(stderr, "%lu\n%s\n", roeis_times[i], roeis_func_names[i - 1]);
+  }  
+}
+
 inline void roeis_report_time() {
-	if (roeis_funcs_len == 0) {
+  if (roeis_funcs_len == 0) {
 		return;
 	}
 	uint64_t prev_time = roeis_times[0];
