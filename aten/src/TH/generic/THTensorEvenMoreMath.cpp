@@ -161,7 +161,7 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
   THTensor *tSlice, *sSlice;
   int64_t *index_data;
   scalar_t *tensor_data, *src_data;
-  roeis_collect_time(__func__);
+  //roeis_collect_time(__func__);
 
   THArgCheck(THTensor_nDimensionLegacyNoScalars(index) == 1, 3, "Index is supposed to be 1-dimensional");
   THArgCheck(dim < THTensor_nDimensionLegacyNoScalars(src), 4, "Indexing dim %d is out of bounds of tensor", dim + TH_INDEX_BASE);

@@ -401,7 +401,7 @@ Tensor & index_select_out(Tensor & result, const Tensor & self, int64_t dim, con
 
 #include "roeistimer.h"
 Tensor index_select(const Tensor & self, int64_t dim, const Tensor & index) {
-  roeis_collect_time(__func__);
+  //roeis_collect_time(__func__);
   return at::_th_index_select(self, dim, index);
 }
 
