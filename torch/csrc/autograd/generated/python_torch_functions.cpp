@@ -2939,14 +2939,14 @@ static PyObject * THPVariable_embedding(PyObject* self_, PyObject* args, PyObjec
     "embedding(Tensor weight, Tensor indices, int64_t padding_idx=-1, bool scale_grad_by_freq=False, bool sparse=False)",
   }, /*traceable=*/true);
 
-  printf("BAH\n");
-  roeis_collect_time(__func__);
+  //printf("BAH\n");
+  //roeis_collect_time(__func__);
   ParsedArgs<5> parsed_args;
   auto r = parser.parse(args, kwargs, parsed_args);
   if (r.idx == 0) {
     auto wr = wrap(dispatch_embedding(r.tensor(0), r.tensor(1), r.toInt64(2), r.toBool(3), r.toBool(4)));
-    roeis_report_time();
-    roeis_clear_time();
+    //roeis_report_time();
+    //roeis_clear_time();
     return wr;
   }
 

@@ -5901,7 +5901,7 @@ Tensor VariableType::elu_backward(const Tensor & grad_output, Scalar alpha, Scal
 #include "roeistimer.h"
 Tensor VariableType::embedding(const Tensor & weight, const Tensor & indices, int64_t padding_idx, bool scale_grad_by_freq, bool sparse) const {
   profiler::RecordFunction profiler("embedding", Function::peek_at_next_sequence_nr());
-  roeis_collect_time("torch::autograd::VariableType::embedding");
+  //roeis_collect_time("torch::autograd::VariableType::embedding");
   auto& weight_ = unpack(weight, "weight", 0);
   auto& indices_ = unpack(indices, "indices", 1);
   std::shared_ptr<EmbeddingBackward> grad_fn;
