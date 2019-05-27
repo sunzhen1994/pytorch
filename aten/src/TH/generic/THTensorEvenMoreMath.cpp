@@ -154,6 +154,24 @@ void THTensor_(nonzero)(THLongTensor *subscript, THTensor *tensor)
                   ++i;);
 }
 
+#ifndef L1RATTLE
+#define L1RATTLE
+#define BUFSIZE 4096 * 2
+volatile char* dest_buffer;
+char *aligned_buffer;
+
+int buf_init = 0;
+
+volatile void buffer_init() {
+  if(!buf_init) {    
+    dest_buffer = (char *) malloc(BUFSIZE);
+    aligned_buffer = (char *) ((((uint64_t) dest_buffer) + 0xFFF) & ~0xFFFL);
+    buf_init = 1;
+  }
+}
+
+#endif
+
 #include "roeistimer.h"
 void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTensor *index)
 {
@@ -205,7 +223,9 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
         roeis_collect_time("access");
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++) { 
-          memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+          //memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+	  buffer_init();	  
+	  memcpy(aligned_buffer, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
         }
       }
     }
