@@ -30,7 +30,7 @@ inline void roeis_collect_time(const char* func_name) {
         //printf("collect %d\n",roeis_funcs_len);
   if(roeis_funcs_len == SAMPLES) 
     for(int i = 0; i < SAMPLES; i++) 
-      fprintf(stderr, "%lu\n%s\n", roeis_times[i], roeis_func_names[i - 1]);
+      fprintf(stderr, "%lu\n%s\n", roeis_times[i], roeis_func_names[i]);
   
   roeis_times[roeis_funcs_len] = rdtscp64();
   //printf("collect2 %d\n",roeis_funcs_len);
