@@ -170,6 +170,21 @@ volatile void buffer_init() {
   }
 }
 
+static inline uint64_t prime_rdtscp64() {
+  uint32_t low, high;
+  asm volatile ("rdtscp": "=a" (low), "=d" (high) :: "ecx");
+  return (((uint64_t)high) << 32) | low;
+}
+
+void prime_delayloop(uint32_t cycles) {
+  uint64_t start = prime_rdtscp64();
+  while ((prime_rdtscp64()-start) < cycles)
+    ;
+}
+
+#define PRIME_DELAY_CYCLES 20000
+#define PROBE_DELAY_CYCLES 100000
+
 #endif
 
 #include "roeistimer.h"
@@ -180,6 +195,8 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
   int64_t *index_data;
   scalar_t *tensor_data, *src_data;
   //roeis_collect_time(__func__);
+
+  buffer_init();
 
   THArgCheck(THTensor_nDimensionLegacyNoScalars(index) == 1, 3, "Index is supposed to be 1-dimensional");
   THArgCheck(dim < THTensor_nDimensionLegacyNoScalars(src), 4, "Indexing dim %d is out of bounds of tensor", dim + TH_INDEX_BASE);
@@ -219,13 +236,15 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
         #pragma omp parallel for if(numel > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++)
           tensor_data[i] = src_data[index_data[i] - TH_INDEX_BASE];
-      } else {
-        roeis_collect_time("access");
+      } else {        
         #pragma omp parallel for if(numel*rowsize > TH_OMP_OVERHEAD_THRESHOLD) private(i)
         for (i=0; i<numel; i++) { 
           //memcpy(tensor_data + i*rowsize, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
-	  buffer_init();	  
+	  prime_delayloop(PRIME_DELAY_CYCLES);
+	  roeis_collect_time("access");
 	  memcpy(aligned_buffer, src_data + (index_data[i] - TH_INDEX_BASE)*rowsize, rowsize*sizeof(scalar_t));
+	  roeis_collect_time("post-access");
+	  prime_delayloop(PROBE_DELAY_CYCLES);
         }
       }
     }
@@ -248,8 +267,7 @@ void THTensor_(indexSelect)(THTensor *tensor, THTensor *src, int dim, THLongTens
       c10::raw::intrusive_ptr::decref(sSlice);
     }
   }
-
-  roeis_collect_time("post-access");
+  
   THLongTensor_free(index);
 }
 

@@ -1,7 +1,7 @@
 #ifndef __TIMER_H__
 #define __TIMER_H__
 
-#define SAMPLES 22
+#define SAMPLES 500
 
 extern "C" const char* roeis_func_names[];
 extern "C" uint64_t roeis_times[];
