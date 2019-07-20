@@ -570,8 +570,28 @@ void THTensor_(retain)(THTensor *self)
   c10::raw::intrusive_ptr::incref(self);
 }
 
+#ifndef FREE_DELAY_LOOP
+#define FREE_DELAY_LOOP
+
+static inline uint64_t free_rdtscp64() {
+  uint32_t low, high;
+  asm volatile ("rdtscp": "=a" (low), "=d" (high) :: "ecx");
+  return (((uint64_t)high) << 32) | low;
+}
+
+void free_delayloop(uint32_t cycles) {
+  uint64_t start = free_rdtscp64();
+  while ((free_rdtscp64()-start) < cycles)
+    ;
+}
+
+#define DELAY_CYCLES 30000
+
+#endif
+
 void THTensor_(free)(THTensor *self)
 {
+  free_delayloop(DELAY_CYCLES);
   THTensor_free(self);
 }
 
